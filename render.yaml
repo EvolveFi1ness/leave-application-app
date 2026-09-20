@@ -7,6 +7,14 @@ services:
     envVars:
       - key: PORT
         value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
     # DATA PERSISTENCE NOTE:
     # On the free plan there are no persistent disks, so the SQLite file in
     # ./data is wiped whenever Render restarts or redeploys the service.

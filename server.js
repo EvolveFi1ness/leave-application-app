@@ -8,6 +8,7 @@ const { DatabaseSync } = require('node:sqlite');
 
 const PORT = process.env.PORT || 3000;
 const app = express();
+const isProd = process.env.NODE_ENV === 'production';
 
 // ---------- storage ----------
 const DATA_DIR = path.join(__dirname, 'data');
@@ -131,9 +132,8 @@ function balanceAfter(employeeId, leaveTypeId, workingDays) {
 
 // ---------- seed ----------
 function seed() {
-  const n = db.prepare('SELECT COUNT(*) c FROM users').get().c;
-  if (n > 0) return;
-  console.log('Seeding database...');
+  const existingUsers = db.prepare('SELECT COUNT(*) c FROM users').get().c;
+  console.log('Seeding reference data...');
   for (const d of ['Engineering', 'Human Resources', 'Finance', 'Operations'])
     db.prepare('INSERT OR IGNORE INTO departments (name) VALUES (?)').run(d);
   const types = [
@@ -151,6 +151,35 @@ function seed() {
     ['2026-08-21', 'Ninoy Aquino Day', 'special'], ['2026-08-31', 'National Heroes Day', 'regular'],
     ['2026-11-01', 'All Saints Day', 'special'], ['2026-12-25', 'Christmas Day', 'regular'], ['2026-12-30', 'Rizal Day', 'regular']
   ]) db.prepare('INSERT OR IGNORE INTO holidays (date, name, kind) VALUES (?,?,?)').run(date, name, kind);
+  const settings = {
+    org_name: 'Sample Organization Inc.', office: 'Human Resources Department', salary_visible: '0',
+    char_limit: '500', cancellation_policy: 'Employees may cancel PENDING or UNDER_REVIEW applications.',
+    workflow_vacation: 'hr_only', workflow_default: 'hr_supervisor_final',
+    upload_max_mb: '5', notif_enabled: '1'
+  };
+  for (const [k, v] of Object.entries(settings)) db.prepare('INSERT OR IGNORE INTO system_settings (key, value) VALUES (?,?)').run(k, v);
+  if (existingUsers > 0) return;
+  const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD || '';
+  if (adminEmail && adminPassword) {
+    const er = db.prepare('INSERT INTO employees (employee_no, name, email, department, position, date_hired) VALUES (?,?,?,?,?,?)')
+      .run('ADMIN-001', 'System Administrator', adminEmail, 'Human Resources', 'Administrator', new Date().toISOString().slice(0, 10));
+    const eid = lid(er);
+    db.prepare('INSERT INTO users (email, password_hash, role, employee_id) VALUES (?,?,?,?)')
+      .run(adminEmail, bcrypt.hashSync(adminPassword, 10), 'sys_admin', eid);
+    for (const [code, earned] of [['vacation', 25], ['sick', 15], ['spl', 5]]) {
+      const lt = db.prepare('SELECT id FROM leave_types WHERE code=?').get(code);
+      if (lt) db.prepare('INSERT OR IGNORE INTO leave_balances (employee_id, leave_type_id, earned) VALUES (?,?,?)').run(eid, lt.id, earned);
+    }
+    audit(null, 'system', 'admin_bootstrapped', 'user', '', 'Initial admin ' + adminEmail);
+    console.log('Bootstrapped admin ' + adminEmail);
+    return;
+  }
+  if (isProd) {
+    console.warn('No users exist and ADMIN_EMAIL/ADMIN_PASSWORD are not set. Set them to create the first administrator.');
+    return;
+  }
+  console.log('Seeding demo accounts (development only)...');
   const emps = [
     ['EMP-001', 'Kenneth Fajardo', 'employee@example.com', 'Engineering', 'Software Engineer'],
     ['EMP-002', 'Maria Santos', 'maria@example.com', 'Finance', 'Accountant'],
@@ -193,22 +222,38 @@ function seed() {
   db.prepare('UPDATE leave_balances SET used=used+4 WHERE employee_id=? AND leave_type_id=?').run(kId, vacId);
   db.prepare('INSERT INTO leave_balance_transactions (employee_id, leave_type_id, delta, type, reason, actor_id) VALUES (?,?,?,?,?,?)')
     .run(kId, vacId, -4, 'debit', 'Approved vacation Jun 30-Jul 3', userIds['hr@example.com']);
-  const settings = {
-    org_name: 'Sample Organization Inc.', office: 'Human Resources Department', salary_visible: '0',
-    char_limit: '500', cancellation_policy: 'Employees may cancel PENDING or UNDER_REVIEW applications.',
-    workflow_vacation: 'hr_only', workflow_default: 'hr_supervisor_final',
-    upload_max_mb: '5', notif_enabled: '1'
-  };
-  for (const [k, v] of Object.entries(settings)) db.prepare('INSERT OR IGNORE INTO system_settings (key, value) VALUES (?,?)').run(k, v);
-  audit(null, 'system', 'seed', 'system', '', 'Database seeded');
+  audit(null, 'system', 'seed', 'system', '', 'Database seeded with demo accounts');
 }
 seed();
 
 // ---------- app ----------
+if (isProd) app.set('trust proxy', 1);
+const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-only-secret-change-in-production';
+if (isProd && !process.env.SESSION_SECRET) console.warn('WARNING: SESSION_SECRET not set; sessions are insecure. Set it in the environment.');
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(session({ secret: 'lms-secret-change-me', resave: false, saveUninitialized: false, cookie: { maxAge: 86400000 } }));
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+app.use(session({ secret: SESSION_SECRET, resave: false, saveUninitialized: false,
+  cookie: { maxAge: 86400000, httpOnly: true, sameSite: 'lax', secure: isProd } }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// login brute-force throttle (in-memory, per IP)
+const loginAttempts = new Map();
+function loginThrottled(ip) {
+  const now = Date.now(), rec = loginAttempts.get(ip);
+  if (rec && now < rec.reset) return rec.count >= 20;
+  loginAttempts.set(ip, { count: 0, reset: now + 15 * 60 * 1000 });
+  return false;
+}
+function loginFailed(ip) {
+  const rec = loginAttempts.get(ip) || { count: 0, reset: Date.now() + 15 * 60 * 1000 };
+  rec.count++; loginAttempts.set(ip, rec);
+}
 
 function requireAuth(req, res, next) {
   if (!req.session.user) return res.status(401).json({ error: 'Not authenticated' });
@@ -226,13 +271,16 @@ const HR_ROLES = ['hr_staff', 'hr_admin', 'sys_admin', 'supervisor', 'final_appr
 
 // ----- auth -----
 app.post('/api/auth/login', (req, res) => {
+  if (loginThrottled(req.ip)) return res.status(429).json({ error: 'Too many attempts. Try again in 15 minutes.' });
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
   const u = db.prepare('SELECT * FROM users WHERE email=?').get(String(email).toLowerCase());
   if (!u || !u.active || !bcrypt.compareSync(password, u.password_hash)) {
+    loginFailed(req.ip);
     audit(null, email, 'login_failed', 'user', '', 'Failed login');
     return res.status(401).json({ error: 'Invalid credentials' });
   }
+  loginAttempts.delete(req.ip);
   const emp = u.employee_id ? db.prepare('SELECT * FROM employees WHERE id=?').get(u.employee_id) : null;
   req.session.user = { id: u.id, email: u.email, role: u.role, employee_id: u.employee_id };
   audit(u.id, u.email, 'login', 'user', u.id, 'Login');
@@ -252,7 +300,7 @@ app.post('/api/auth/forgot', (req, res) => {
   const { email } = req.body || {};
   if (email) {
     const u = db.prepare('SELECT * FROM users WHERE email=?').get(String(email).toLowerCase());
-    if (u) notify(u.id, 'Password reset requested', 'An administrator will contact you. For demo, password is password123.', 'security');
+    if (u) notify(u.id, 'Password reset requested', 'An administrator will contact you with reset instructions.', 'security');
   }
   res.json({ ok: true, message: 'If the account exists, instructions were sent.' });
 });

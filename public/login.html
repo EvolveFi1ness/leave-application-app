@@ -9,13 +9,13 @@
 <header class="top"><h2 style="margin:0">Leave Management System</h2><div class="muted" style="color:#c7d2fe">Employee & HR Portal</div></header>
 <div class="wrap" style="max-width:440px"><div class="card">
 <h3>Login</h3><div id="e"></div>
-<label>Email</label><input id="email" value="employee@example.com">
-<label>Password</label><input id="pw" type="password" value="password123">
+<label>Email</label><input id="email" placeholder="you@example.com">
+<label>Password</label><input id="pw" type="password" placeholder="••••••••">
 <div style="margin-top:12px"><button class="btn" style="width:100%" onclick="go()">Login</button></div>
 <div style="margin-top:8px"><button class="btn ghost" style="width:100%" onclick="document.getElementById('f').style.display='block'">Forgot Password</button></div>
 <div id="f" style="display:none;margin-top:10px"><label>Account email</label><input id="fe" placeholder="you@example.com">
 <button class="btn sec" onclick="forgot()">Send reset</button><div id="fm" class="muted"></div></div>
-<div class="card" style="background:#eef2ff"><b>Demo accounts</b> (password: password123)<br>employee@example.com — Employee<br>hr@example.com — HR Admin<br>supervisor@example.com — Supervisor</div>
+<div class="card" style="background:#eef2ff">Contact your HR administrator for your account credentials.</div>
 </div></div>
 <script src="js/api.js"></script><script>
 async function go(){try{const j=await Api.login(email.value.trim(),pw.value);
