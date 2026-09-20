@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Panel — Leave Management</title><link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1e2a5a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/apple-touch.png">
+<link rel="stylesheet" href="css/app.css"></head><body>
+<div class="layout"><div class="side"><h3>ADMIN PANEL</h3><div id="who" class="muted" style="color:#c7d2fe">…</div>
+<div id="menu" style="margin-top:12px"></div><button onclick="Admin.logout()">Logout</button></div>
+<div class="main"><header class="top"><b id="ttl">Dashboard</b></header><div class="wrap" id="app"></div></div></div>
+<script src="js/api.js"></script><script src="js/admin.js"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}</script></body></html>

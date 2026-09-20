@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: leavems
+    runtime: docker
+    plan: free
+    healthCheckPath: /login.html
+    envVars:
+      - key: PORT
+        value: 3000
+    # DATA PERSISTENCE NOTE:
+    # On the free plan there are no persistent disks, so the SQLite file in
+    # ./data is wiped whenever Render restarts or redeploys the service.
+    # Fine for trying it live; for real use either:
+    #   1) upgrade to Starter and attach a disk:
+    #      disk:
+    #        name: leavems-data
+    #        mountPath: /app/data
+    #        sizeGB: 1
+    #   2) ask to migrate the database to free hosted Postgres (Supabase/Neon).

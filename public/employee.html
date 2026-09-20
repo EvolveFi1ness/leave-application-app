@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Leave — Employee</title><link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1e2a5a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/apple-touch.png">
+<link rel="stylesheet" href="css/app.css"></head><body>
+<header class="top"><div class="wrap"><div style="display:flex;gap:12px;align-items:center">
+<div id="av" style="width:48px;height:48px;border-radius:50%;background:#4f46e5;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px">E</div>
+<div><div id="nm" style="font-weight:800;font-size:18px">…</div><div id="dp" class="muted" style="color:#c7d2fe">…</div></div></div></div></header>
+<div class="wrap" id="app" style="padding-bottom:150px"></div>
+<button class="fab" onclick="UI.wizard()">+ New Leave Application</button>
+<nav class="bottom">
+<button data-t="home" class="on" onclick="UI.tab('home',this)">Home</button>
+<button data-t="req" onclick="UI.tab('req',this)">Requests</button>
+<button data-t="cal" onclick="UI.tab('cal',this)">Calendar</button>
+<button data-t="not" onclick="UI.tab('not',this)">Notifications</button>
+<button data-t="me" onclick="UI.tab('me',this)">Profile</button>
+</nav>
+<script src="js/api.js"></script><script src="js/employee.js"></script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}</script></body></html>

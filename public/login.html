@@ -1,0 +1,25 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Login — Leave Management</title><link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1e2a5a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/apple-touch.png">
+<link rel="stylesheet" href="css/app.css"></head><body>
+<header class="top"><h2 style="margin:0">Leave Management System</h2><div class="muted" style="color:#c7d2fe">Employee & HR Portal</div></header>
+<div class="wrap" style="max-width:440px"><div class="card">
+<h3>Login</h3><div id="e"></div>
+<label>Email</label><input id="email" value="employee@example.com">
+<label>Password</label><input id="pw" type="password" value="password123">
+<div style="margin-top:12px"><button class="btn" style="width:100%" onclick="go()">Login</button></div>
+<div style="margin-top:8px"><button class="btn ghost" style="width:100%" onclick="document.getElementById('f').style.display='block'">Forgot Password</button></div>
+<div id="f" style="display:none;margin-top:10px"><label>Account email</label><input id="fe" placeholder="you@example.com">
+<button class="btn sec" onclick="forgot()">Send reset</button><div id="fm" class="muted"></div></div>
+<div class="card" style="background:#eef2ff"><b>Demo accounts</b> (password: password123)<br>employee@example.com — Employee<br>hr@example.com — HR Admin<br>supervisor@example.com — Supervisor</div>
+</div></div>
+<script src="js/api.js"></script><script>
+async function go(){try{const j=await Api.login(email.value.trim(),pw.value);
+const r=j.user.role;location.href=(r==='employee')?'employee.html':'admin.html';}catch(e){document.getElementById('e').innerHTML='<div class=err>'+esc(e.message)+'</div>';}}
+async function forgot(){try{const j=await Api.post('/api/auth/forgot',{email:document.getElementById('fe').value});document.getElementById('fm').textContent=j.message;}catch(e){document.getElementById('fm').textContent=e.message;}}
+</script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}</script></body></html>
