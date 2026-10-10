@@ -51,6 +51,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     }
     res = await fetch('http://localhost:3000/api/admin/reports/export.csv', { headers: HH });
     check('csv export', res.ok && (res.headers.get('content-type') || '').includes('csv'));
+    // --- app (Android) client separation ---
+    res = await fetch('http://localhost:3000/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'employee@example.com', password: 'password123', client: 'android' }) });
+    const apj = await res.json();
+    check('employee login via app client', res.ok && apj.user && apj.user.role === 'employee', JSON.stringify(apj).slice(0, 100));
+    res = await fetch('http://localhost:3000/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'hr@example.com', password: 'password123', client: 'android' }) });
+    const hrj = await res.json();
+    check('HR refused on app client', res.status === 403 && /web portal/.test(hrj.error || ''), `status=${res.status} ${JSON.stringify(hrj)}`);
+    check('HR app refusal sets no cookie', !res.headers.get('set-cookie'), String(res.headers.get('set-cookie')));
+    res = await fetch('http://localhost:3000/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'hr@example.com', password: 'password123' }) });
+    const hrw = await res.json();
+    check('HR browser login unaffected', res.ok && hrw.user, JSON.stringify(hrw).slice(0, 100));
   } catch (e) { results.push('FAIL exception ' + e.message); }
   console.log('--- SMOKE ---');
   console.log(results.join('\n'));

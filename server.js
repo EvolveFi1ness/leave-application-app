@@ -272,13 +272,17 @@ const HR_ROLES = ['hr_staff', 'hr_admin', 'sys_admin', 'supervisor', 'final_appr
 // ----- auth -----
 app.post('/api/auth/login', (req, res) => {
   if (loginThrottled(req.ip)) return res.status(429).json({ error: 'Too many attempts. Try again in 15 minutes.' });
-  const { email, password } = req.body || {};
+  const { email, password, client } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
   const u = db.prepare('SELECT * FROM users WHERE email=?').get(String(email).toLowerCase());
   if (!u || !u.active || !bcrypt.compareSync(password, u.password_hash)) {
     loginFailed(req.ip);
     audit(null, email, 'login_failed', 'user', '', 'Failed login');
     return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  if (client === 'android' && HR_ROLES.includes(u.role)) {
+    audit(u.id, u.email, 'login_blocked_app', 'user', u.id, 'HR/supervisor login refused from Android app');
+    return res.status(403).json({ error: 'HR and Supervisor accounts use the web portal.' });
   }
   loginAttempts.delete(req.ip);
   const emp = u.employee_id ? db.prepare('SELECT * FROM employees WHERE id=?').get(u.employee_id) : null;
