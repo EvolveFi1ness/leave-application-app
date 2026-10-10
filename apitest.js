@@ -55,6 +55,14 @@ function loadApi(pathname, fetchImpl) {
   const dlOk = !dl.includes('Same WiFi as the server PC required');
   check('download.html drops LAN-only claim', dlOk, dlOk ? '' : 'download.html still claims LAN-only');
 
+  const mt = fs.readFileSync(path.join(__dirname, 'LeaveMS-android', 'app', 'src', 'main', 'java', 'com', 'leavems', 'app', 'MainActivity.java'), 'utf8');
+  const urlOk = mt.includes('DEFAULT_URL = "https://aki.tail4044e0.ts.net:8443/app.html"');
+  check('MainActivity points at app.html', urlOk, urlOk ? '' : 'DEFAULT_URL not updated');
+  const hintOk = mt.includes('setHint("https://aki.tail4044e0.ts.net:8443/app.html")');
+  check('MainActivity hint points at app.html', hintOk, hintOk ? '' : 'hint not updated');
+  const lanOk = !mt.includes('192.168.') && !mt.includes('same WiFi');
+  check('MainActivity has no LAN address or same-WiFi claim', lanOk, lanOk ? '' : 'LAN address or same-WiFi wording remains');
+
   console.log(results.join('\n'));
   process.exit(results.some(l => l.startsWith('FAIL')) ? 1 : 0);
 })();

@@ -15,7 +15,7 @@ import android.widget.LinearLayout;
 public class MainActivity extends Activity {
     private static final String PREFS = "leavems";
     private static final String KEY_URL = "server_url";
-    private static final String DEFAULT_URL = "http://192.168.100.235:3000/login.html";
+    private static final String DEFAULT_URL = "https://aki.tail4044e0.ts.net:8443/app.html";
     private WebView web;
     private SharedPreferences prefs;
 
@@ -44,12 +44,12 @@ public class MainActivity extends Activity {
         layout.setPadding(48, 32, 48, 0);
         final EditText input = new EditText(this);
         input.setText(current);
-        input.setHint("http://SERVER-IP:3000/login.html");
+        input.setHint("https://aki.tail4044e0.ts.net:8443/app.html");
         layout.addView(input);
         new AlertDialog.Builder(this)
                 .setTitle(firstRun ? "Connect to LeaveMS server" : "Server address")
                 .setMessage(firstRun
-                        ? "Enter the address of the computer running 'npm start' (same WiFi)."
+                        ? "Enter the address of the computer running 'npm start'."
                         : "Enter the server address, then reload.")
                 .setView(layout)
                 .setCancelable(!firstRun)
