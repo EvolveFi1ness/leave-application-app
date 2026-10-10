@@ -227,7 +227,7 @@ function seed() {
 seed();
 
 // ---------- app ----------
-if (isProd) app.set('trust proxy', 1);
+app.set('trust proxy', 1);
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-only-secret-change-in-production';
 if (isProd && !process.env.SESSION_SECRET) console.warn('WARNING: SESSION_SECRET not set; sessions are insecure. Set it in the environment.');
 app.use(express.json({ limit: '2mb' }));

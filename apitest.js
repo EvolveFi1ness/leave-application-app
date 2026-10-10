@@ -48,6 +48,13 @@ function loadApi(pathname, fetchImpl) {
   const shellOk = /const SHELL = \[[^\]]*'\/app\.html'/.test(sw);
   check('sw.js SHELL precaches /app.html', shellOk, shellOk ? '' : '/app.html missing from SHELL');
 
+  const srv = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+  const trustOk = /app\.set\(\s*'trust proxy',\s*1\s*\)/.test(srv) && !/if\s*\(\s*isProd\s*\)\s*app\.set\(\s*'trust proxy'/.test(srv);
+  check('trust proxy set unconditionally', trustOk, trustOk ? '' : 'trust proxy still gated behind isProd');
+  const dl = fs.readFileSync(path.join(__dirname, 'public', 'download.html'), 'utf8');
+  const dlOk = !dl.includes('Same WiFi as the server PC required');
+  check('download.html drops LAN-only claim', dlOk, dlOk ? '' : 'download.html still claims LAN-only');
+
   console.log(results.join('\n'));
   process.exit(results.some(l => l.startsWith('FAIL')) ? 1 : 0);
 })();
