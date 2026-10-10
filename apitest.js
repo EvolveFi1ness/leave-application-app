@@ -40,6 +40,14 @@ function loadApi(pathname, fetchImpl) {
   try { await d.api.me(); } catch {}
   check('employee.html 401 redirects to login', d.loc.href === 'login.html', d.loc.href);
 
+  const sw = fs.readFileSync(path.join(__dirname, 'public', 'sw.js'), 'utf8');
+  const swOk = sw.includes("u.pathname === '/admin.html'")
+    && /fetch\(e\.request\)/.test(sw)
+    && sw.includes('!res.redirected');
+  check('sw.js network-first for admin.html', swOk, swOk ? '' : 'missing admin.html network-first branch');
+  const shellOk = /const SHELL = \[[^\]]*'\/app\.html'/.test(sw);
+  check('sw.js SHELL precaches /app.html', shellOk, shellOk ? '' : '/app.html missing from SHELL');
+
   console.log(results.join('\n'));
   process.exit(results.some(l => l.startsWith('FAIL')) ? 1 : 0);
 })();

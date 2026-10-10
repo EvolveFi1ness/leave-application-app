@@ -1,7 +1,7 @@
 // LeaveMS service worker: offline shell for static assets, network-only for APIs.
 const CACHE = 'lms-v1';
 const SHELL = [
-  '/', '/login.html', '/employee.html', '/admin.html', '/print.html',
+  '/', '/login.html', '/app.html', '/employee.html', '/admin.html', '/print.html',
   '/css/app.css', '/js/api.js', '/js/employee.js', '/js/admin.js', '/js/print.js',
   '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'
 ];
@@ -14,6 +14,18 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   if (u.pathname.startsWith('/api/')) return; // always live data, never cache
+  // /admin.html must reach the network first so the server's app-client 302
+  // is not shadowed by the precached copy in SHELL.
+  if (u.pathname === '/admin.html') {
+    e.respondWith(fetch(e.request).then(res => {
+      if (e.request.method === 'GET' && res.ok && !res.redirected && u.origin === location.origin) {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
+      }
+      return res;
+    }).catch(() => caches.match('/admin.html')));
+    return;
+  }
   e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
     if (e.request.method === 'GET' && res.ok && u.origin === location.origin) {
       const copy = res.clone();
