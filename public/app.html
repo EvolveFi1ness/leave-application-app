@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Login — Employee Portal</title><link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1e2a5a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/apple-touch.png">
+<link rel="stylesheet" href="css/app.css"></head><body>
+<header class="top"><h2 style="margin:0">Leave Management System</h2><div class="muted" style="color:#c7d2fe">Employee Portal</div></header>
+<div class="wrap" style="max-width:440px"><div class="card">
+<h3>Employee Login</h3><div id="e"></div>
+<div id="b" style="display:none;margin-top:8px" class="err">HR and Supervisor accounts use the web portal. Please sign in there instead.</div>
+<label>Email</label><input id="email" placeholder="you@example.com">
+<label>Password</label><input id="pw" type="password" placeholder="••••••••">
+<div style="margin-top:12px"><button class="btn" style="width:100%" onclick="go()">Login</button></div>
+<div class="card" style="background:#eef2ff">Employees sign in here. HR and Supervisor accounts must use the web portal.</div>
+</div></div>
+<script src="js/api.js"></script><script>
+function showBlock(){document.getElementById('b').style.display='block';document.getElementById('e').innerHTML='';}
+async function go(){
+  try{
+    const j = await Api.login(email.value.trim(), pw.value, {client:'android'});
+    if (j.user && j.user.role !== 'employee') { showBlock(); return; }
+    location.href='employee.html';
+  } catch(e){
+    if (/web portal/.test(e.message)) showBlock();
+    else document.getElementById('e').innerHTML='<div class=err>'+esc(e.message)+'</div>';
+  }
+}
+async function boot(){
+  if (location.search.indexOf('blocked=1') > -1) showBlock();
+  try { const j = await Api.me(); if (j.user && j.user.role === 'employee') location.href='employee.html'; }
+  catch(e){ /* not signed in - leave the form visible */ }
+}
+boot();
+</script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}</script></body></html>

@@ -240,6 +240,20 @@ app.use((req, res, next) => {
 });
 app.use(session({ secret: SESSION_SECRET, resave: false, saveUninitialized: false,
   cookie: { maxAge: 86400000, httpOnly: true, sameSite: 'lax', secure: isProd } }));
+// ----- app (Android) entry: employee-only -----
+const APP_BLOCKED_PATHS = ['/admin.html', '/js/admin.js'];
+app.get('/app.html', (req, res) => {
+  if (req.session.user && req.session.user.role !== 'employee') {
+    return req.session.destroy(() => res.redirect('/app.html?blocked=1'));
+  }
+  req.session.client = 'android';
+  res.sendFile(path.join(__dirname, 'public', 'app.html'));
+});
+app.use((req, res, next) => {
+  if (req.session.client !== 'android') return next();
+  if (APP_BLOCKED_PATHS.includes(req.path)) return res.redirect('/app.html');
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // login brute-force throttle (in-memory, per IP)
