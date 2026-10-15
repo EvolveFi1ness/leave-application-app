@@ -33,7 +33,7 @@ The app persists in a single SQLite file via Node 24's built-in `node:sqlite` dr
 1. **`db.js` (new)** — Firestore client initialization plus small persistence helpers:
    - `insertWithId(collection, data)` — transaction: increments the collection's counter doc, writes the doc with the next integer ID, returns the ID
    - `getById(collection, id)` — direct key lookup: documents are stored with **document ID = `String(id)`**, so this is one `doc(String(id)).get()` with no query or index involved
-   - `updateById(collection, id, patch)` — throws a typed not-found error if missing (route layer maps to today's 404)
+   - `updateById(collection, id, patch)` — writes the patch only when the doc exists; returns `false` on a missing doc (silent no-op). This is exact SQLite parity: today's `UPDATE ... WHERE id=?` on a missing row affects 0 rows yet the route still answers `{ ok: true }` — routes never 404 on updates.
    - `removeById(collection, id)`
    - `list(collection, { where = [], orderBy = [] })` — builds Firestore queries from a filter spec
    - `count(querySpec)` — `list(...).get()` → `snap.size`
@@ -94,9 +94,9 @@ The app persists in a single SQLite file via Node 24's built-in `node:sqlite` dr
   ```
 
   `emulators:exec` sets `FIRESTORE_EMULATOR_HOST` for the child process. **Requirement: every check run sees an empty database.** Mechanism: the check wrapper clears the emulator first via its REST endpoint (`DELETE http://127.0.0.1:8080/v1/projects/demo-leavems/databases/(default)/documents`) — correct regardless of whether the installed emulator version retains data across runs. This permanently eliminates the DB-state class of failure (e.g. today's `prodcheck` demo-user pollution).
-- `smoketest.js`, `prodcheck.js`: unchanged assertions, wrapped invocation only.
-- `prodcheck.js` gains one test-only fix: send `X-Forwarded-Proto: https` on its requests, resolving the pre-existing `prod admin stats 401` (proven pre-existing at `79f49b9`; root cause is `secure` cookies over plain HTTP). It must otherwise keep its production env vars (`NODE_ENV`, `ADMIN_EMAIL`, `SESSION_SECRET`).
-- `apitest.js`, `pwacheck.js`, `dlcheck.js`: static/source-level — **no changes**.
+- `apitest.js`: static/source-level — **no changes** (its `trust proxy` regex must keep matching `server.js`, which the conversion preserves verbatim).
+- `smoketest.js`, `pwacheck.js`, `dlcheck.js`: script content unchanged — but all three **spawn `server.js`**, so all three run under the emulator wrapper. After the switch, `smoketest`'s pre-existing `submit leave` overlap failure disappears (fresh DB each run): expected output becomes 23 `PASS` / 0 `FAIL`.
+- `prodcheck.js`: emulator wrapper plus one test-only fix — send `X-Forwarded-Proto: https` on its requests, resolving the pre-existing `prod admin stats 401` (proven pre-existing at `79f49b9`; root cause is `secure` cookies over plain HTTP). It must otherwise keep its production env vars (`NODE_ENV`, `ADMIN_EMAIL`, `SESSION_SECRET`).
 - `tunnelcheck.js`: also spawns `server.js`, so it must run under the same emulator wrapper, but it additionally requires a `/tmp/cloudflared` binary that is environment-dependent (Unix path). It is **not** part of the migration success criteria — excluded exactly as it is today.
 - New devDependency: `firebase-tools`. Runtime dependency: `firebase-admin`. Java 21 (already installed) hosts the emulator.
 
