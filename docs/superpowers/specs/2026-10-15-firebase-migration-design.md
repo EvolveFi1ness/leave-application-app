@@ -35,10 +35,11 @@ The app persists in a single SQLite file via Node 24's built-in `node:sqlite` dr
    - `getById(collection, id)` — direct key lookup: documents are stored with **document ID = `String(id)`**, so this is one `doc(String(id)).get()` with no query or index involved
    - `updateById(collection, id, patch)` — writes the patch only when the doc exists; returns `false` on a missing doc (silent no-op). This is exact SQLite parity: today's `UPDATE ... WHERE id=?` on a missing row affects 0 rows yet the route still answers `{ ok: true }` — routes never 404 on updates.
    - `removeById(collection, id)`
-   - `list(collection, { where = [], orderBy = [] })` — builds Firestore queries from a filter spec
-   - `count(querySpec)` — `list(...).get()` → `snap.size`
-   - `hydrate(rows, spec)` — batch-fetch referenced documents with `getAll` and merge fields, replacing SQL JOINs
-   - `tx(fn)` — wraps `db.runTransaction`
+   - `fetchAll(collection)` / `whereEq(collection, field, value)` / `getOne(collection, field, value)` — reads; compound predicates (LIKE, `substr`, `date()`, multi-key `ORDER BY`, pagination) are applied in memory at call sites, so every Firestore query stays single-field and **no composite indexes are needed**
+   - `balanceRef`/`balanceDocId`/`readBalanceTx` — composite-key (`employeeId_leaveTypeId`) balance access used inside transactions
+   - `getDoc`/`setDoc`/`setIfAbsent`/`createIfAbsentBy` — doc-ID-keyed writes: `system_settings` keyed by `key`, `INSERT OR IGNORE` parity for unique-field reference rows
+   - `nowText()`/`todayISO()` — SQLite `datetime('now')`/`date('now')` string parity (`'YYYY-MM-DD HH:MM:SS'` UTC / `'YYYY-MM-DD'`)
+   - JOIN replacement: read-time hydration — `fetchAll` + id→row `Map`s (or `getById` for single-doc joins); multi-write flows (application + approval + balance) run inside `db.runTransaction`
 2. **`server.js`** — keeps all routes, middleware, auth, session, upload, and seed logic. The 108 `db.prepare(...)` call sites are rewritten in place to call `db.js` helpers. No route restructuring.
 3. **Firestore emulator** — local/CI database. Selected automatically when `FIRESTORE_EMULATOR_HOST` is set; no credentials involved.
 
@@ -59,7 +60,7 @@ The app persists in a single SQLite file via Node 24's built-in `node:sqlite` dr
 - **Field names stay snake_case** — identical to column names, so call-site rewrites are mechanical.
 - **Integer IDs are preserved** (API compatibility). A `counters` collection holds one doc per collection; every insert increments it inside the same transaction that writes the document. This replaces `last_insert_rowid` (`server.js:219`).
 - **Dates remain ISO-8601 strings**; JSON columns (`extra_details` and similar) remain JSON strings. No Firestore `Timestamp` conversion — responses stay byte-compatible with today's.
-- **Document `id` field:** every doc carries an `id` number field matching its logical ID, so existing response mapping code is untouched.
+- **Document `id` field:** counter-backed collections carry an `id` number field matching their logical ID (written by `insertWithId`), so existing response mapping is untouched. Two exceptions store no `id` field, preserving today's response shapes exactly: `leave_balances` (doc ID = `employeeId_leaveTypeId`) and `system_settings` (doc ID = `key`) — neither table has an `id` column today.
 
 ### Query mapping (108 call sites)
 
@@ -67,12 +68,12 @@ The app persists in a single SQLite file via Node 24's built-in `node:sqlite` dr
 |---|---|
 | `SELECT ... WHERE id=?` | `getById` |
 | `INSERT` + `last_insert_rowid` | `insertWithId` (counter transaction) |
-| `UPDATE ... WHERE id=?` | `updateById` (not-found → 404) |
+| `UPDATE ... WHERE id=?` | `updateById` (missing doc → silent no-op returning `false`; routes keep answering `{ ok: true }`) |
 | `DELETE ... WHERE id=?` | `removeById` |
-| `WHERE`/`ORDER BY` lists (16 `ORDER BY`) | `list()` with filter spec (replicates the dynamic `${where}` builders at `server.js:398`, `server.js:698`) |
-| `COUNT(*)` (incl. status aggregates `server.js:490-493,515,527,684`) | `count()` → `snap.size` |
+| `WHERE`/`ORDER BY` lists (16 `ORDER BY`) | `fetchAll` + in-memory predicate/sort (replicates the dynamic `${where}` builders at `server.js:398`, `server.js:698`) |
+| `COUNT(*)` (incl. status aggregates `server.js:490-493,515,527,684`) | `.length` over `fetchAll`/`whereEq` results (single-field filter first) |
 | `INSERT OR IGNORE` (6) | `create()`-style write catching `ALREADY_EXISTS` |
-| JOINs (35) | read-time `hydrate()` batch fetch — no denormalized copies, single source of truth |
+| JOINs (35) | read-time hydration (`fetchAll` + id→row `Map`s / `getById`) — no denormalized copies, single source of truth |
 | Multi-write flows (balance debit + approval + status change) | Firestore **transaction** — hardening: today's SQL uses zero transactions |
 
 ## Seed and bootstrap
@@ -109,7 +110,7 @@ The app persists in a single SQLite file via Node 24's built-in `node:sqlite` dr
 ## Deployment
 
 - `render.yaml`: add `FIREBASE_SERVICE_ACCOUNT` (`sync: false` secret); replace the stale SQLite-disk commentary with a pointer to Firestore.
-- **Composite indexes:** filtered + ordered queries need indexes the emulator does not enforce. Maintain `firestore.indexes.json`. **Chosen order:** deploy the indexes to the real project *first*, then run the check suite once against real Firestore with real credentials as the final verification step.
+- **Indexes:** the design keeps every query single-field (compound filtering happens in memory), so `firestore.indexes.json` stays empty and there are no composite indexes to deploy. **Chosen order:** final verification runs the check suite once against real Firestore with real credentials before Render is switched over.
 - `package.json`: add `firebase-admin`, `firebase-tools`.
 - `data/app.db` and the `node:sqlite` require are removed from code; the ignored `data/` directory becomes a legacy artifact.
 
