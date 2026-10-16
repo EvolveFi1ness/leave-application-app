@@ -15,13 +15,13 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
     # DATA PERSISTENCE NOTE:
-    # On the free plan there are no persistent disks, so the SQLite file in
-    # ./data is wiped whenever Render restarts or redeploys the service.
-    # Fine for trying it live; for real use either:
-    #   1) upgrade to Starter and attach a disk:
-    #      disk:
-    #        name: leavems-data
-    #        mountPath: /app/data
-    #        sizeGB: 1
-    #   2) ask to migrate the database to free hosted Postgres (Supabase/Neon).
+    # Data is stored in Cloud Firestore (see db.js). On the Render free plan
+    # the container filesystem is wiped on every restart/redeploy, but
+    # Firestore data lives in Google's cloud and survives — this is why the
+    # SQLite → Firestore migration was done. FIREBASE_SERVICE_ACCOUNT must be
+    # set manually in the Render dashboard (Environment tab): paste the full
+    # JSON contents of the service-account key file (it is marked sync: false
+    # so it is never stored in git).

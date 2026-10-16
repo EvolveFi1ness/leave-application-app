@@ -6,3 +6,8 @@ LeaveMS-android/app/build/
 LeaveMS-android/build/
 .omo/
 github-upload/
+serviceAccount.json
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+firebase-export-*

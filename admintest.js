@@ -96,9 +96,8 @@ const B = 'http://localhost:3002';
     ck('employee dup_no 400', res.status === 400, res.status);
     res = await fetch(B + '/api/admin/employees', { method: 'POST', headers: HH, body: JSON.stringify({ employee_no: 'TEMP-901', name: 'Dup Email', email: 'temp900@example.com' }) });
     ck('employee dup_email 400', res.status === 400, res.status);
-    // Full bodies: node:sqlite cannot bind undefined, so partial updates 500 on
-    // the SQLite reference (server.js COALESCE PUTs). Send every column the
-    // handler destructures; null is a valid bind and COALESCE keeps the old value.
+    // Full bodies: send every column the handler destructures; null/undefined
+    // fields are skipped by the patch layer, so untouched columns keep values.
     res = await fetch(B + `/api/admin/employees/${emp.id}`, { method: 'PUT', headers: HH, body: JSON.stringify({ name: 'Temp Renamed', email: 'temp900@example.com', phone: null, department: 'Operations', position: 'Staff', status: null, date_hired: '2026-01-05' }) });
     ck('employee update ok', res.ok, res.status);
     res = await fetch(B + `/api/admin/employees/${emp.id}`, { method: 'DELETE', headers: HH });
