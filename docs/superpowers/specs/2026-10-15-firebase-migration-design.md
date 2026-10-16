@@ -1,7 +1,7 @@
 # Firestore Migration Design
 
 **Date:** 2026-10-15
-**Status:** Draft, awaiting user review
+**Status:** Implemented
 **Goal:** Replace the file-based SQLite database (`data/app.db`) with Cloud Firestore so application data survives Render restarts and redeploys, without changing any user-visible behavior.
 
 ## Background and motivation
