@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
 COPY server.js ./
+COPY db.js ./
 COPY public ./public
 RUN mkdir -p data uploads
 ENV PORT=3000
