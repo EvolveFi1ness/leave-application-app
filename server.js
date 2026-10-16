@@ -204,7 +204,6 @@ app.get('/app.html', (req, res) => {
   if (req.session.user && req.session.user.role !== 'employee') {
     return req.session.destroy(() => res.redirect('/app.html?blocked=1'));
   }
-  req.session.client = 'android';
   res.sendFile(path.join(__dirname, 'public', 'app.html'));
 });
 app.use((req, res, next) => {
@@ -260,6 +259,7 @@ app.post('/api/auth/login', ah(async (req, res) => {
   loginAttempts.delete(req.ip);
   const emp = u.employee_id ? await getById('employees', u.employee_id) : null;
   req.session.user = { id: u.id, email: u.email, role: u.role, employee_id: u.employee_id };
+  if (client === 'android') req.session.client = 'android'; else delete req.session.client;
   await audit(u.id, u.email, 'login', 'user', u.id, 'Login');
   res.json({ user: { id: u.id, email: u.email, role: u.role, employee_id: u.employee_id, employee: emp } });
 }));
