@@ -4,13 +4,24 @@
   "description": "Leave Application and HR Management System (Philippine Application for Leave)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test:api": "node apitest.js",
+    "test:db": "firebase emulators:exec --only firestore --project demo-leavems \"node emuclear.js && node dbtest.js\"",
+    "test:smoke": "firebase emulators:exec --only firestore --project demo-leavems \"node emuclear.js && node smoketest.js\"",
+    "test:admin": "firebase emulators:exec --only firestore --project demo-leavems \"node emuclear.js && node admintest.js\"",
+    "test:prod": "firebase emulators:exec --only firestore --project demo-leavems \"node emuclear.js && node prodcheck.js\"",
+    "test:pwa": "firebase emulators:exec --only firestore --project demo-leavems \"node emuclear.js && node pwacheck.js\"",
+    "test:dl": "firebase emulators:exec --only firestore --project demo-leavems \"node emuclear.js && node dlcheck.js\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "express-session": "^1.18.0",
+    "firebase-admin": "^14.5.0",
     "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.34.0"
   }
 }
