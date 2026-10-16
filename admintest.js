@@ -71,7 +71,7 @@ const B = 'http://localhost:3002';
     ck('leave detail', res.ok && detail.employee_name === 'Kenneth Fajardo' && detail.leave_code === 'sick', `${detail.employee_name} ${detail.leave_code}`);
     res = await fetch(B + '/api/admin/leaves/999999', { headers: HH });
     ck('leave detail 404', res.status === 404, res.status);
-    ck('leave detail balance.remaining', typeof detail.balance?.remaining === 'number', String(detail.balance?.remaining));
+    ck('leave detail balance.remaining', detail.balance?.remaining === 13, String(detail.balance?.remaining));
 
     // --- reject flow: 400 -> 200 -> finalized 400 -> detail REJECTED (4 checks) ---
     res = await fetch(B + `/api/admin/leaves/${created.id}/review`, { method: 'POST', headers: HH, body: JSON.stringify({ action: 'reject', comment: '' }) });
@@ -170,5 +170,6 @@ const B = 'http://localhost:3002';
   console.log('--- SERVER LOG ---');
   console.log(out.slice(0, 2000));
   srv.kill();
-  setTimeout(() => process.exit(0), 500);
+  const fails = results.filter(l => l.startsWith('FAIL')).length;
+  setTimeout(() => process.exit(fails ? 1 : 0), 500);
 })();

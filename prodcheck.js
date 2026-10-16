@@ -42,5 +42,6 @@ const FX = { 'X-Forwarded-Proto': 'https' };
   } catch (e) { out.push('FAIL exception ' + e.message); }
   console.log(out.join('\n'));
   srv.kill();
-  setTimeout(() => process.exit(0), 500);
+  const fails = out.filter(l => l.startsWith('FAIL')).length;
+  setTimeout(() => process.exit(fails ? 1 : 0), 500);
 })();

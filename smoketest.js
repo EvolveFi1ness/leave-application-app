@@ -91,5 +91,6 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   console.log('--- SERVER LOG ---');
   console.log(out.slice(0, 2000));
   srv.kill();
-  setTimeout(() => process.exit(0), 500);
+  const fails = results.filter(l => l.startsWith('FAIL')).length;
+  setTimeout(() => process.exit(fails ? 1 : 0), 500);
 })();
